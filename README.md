@@ -31,7 +31,7 @@ For MySQL 8.0 there are small differences and we created a specific script **mys
 
 #### References
 
-MySQL reference version is *MySQL Community Server 5.7*.
+MySQL reference version are *MySQL Community Server 5.7* and *MySQL Community Server 8.0*.
 
 GDPR (http://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0679) Cross Reference contains links to GDPR articles.
 
