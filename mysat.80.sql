@@ -1,17 +1,15 @@
--- Program:	MySAT.sql
--- 		MySQL 5.7 Security Assessement Tool
+-- Program:	MySAT.80.sql
+-- 		MySQL 8.0 Security Assessement Tool
 --
 -- Version:     1.0.1
 -- Author:      XeniaLAB srl
--- Date:        1-MAY-2018
--- Usage:	mysql --user=root -pXXX --skip-column-names -f < mysat.sql > MySAT.htm
+-- Date:        25-MAY-2018
+-- Usage:	mysql --user=root -pXXX --skip-column-names -f < mysat.80.sql > MySAT.htm
 --
 -- Note:
--- 1.0.0:        1-APR-2018 meo@bogliolo.name
---                First version based on XSAT
--- 1.0.1:       25-MAY-2018 meo@bogliolo.name
---                Small bug fixing (eg. Application user usage formatting, log_error_verbosity),
---                show column names for PII
+-- 1.0.0:       1-MAY-2018 meo@bogliolo.name
+--                First version based on MySAT 1.0.1 for MySQL 5.7
+-- 1.0.1          MySQL 8.0 compliance
 
 use information_schema;
 select '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />';
@@ -67,7 +65,7 @@ select '</table><p><br><hr>' ;
 select '<P>Statistics generated on: ', now();
 select ' by: ', user(), 'as: ',current_user();
  
-select 'using: <I><b>mysat.sql</b> v.1.0.1 (2018-05-01)';
+select 'using: <I><b>mysat.80.sql</b> v.1.0.1 (2018-05-01)';
 select '<br>Software by ';
 select '<A HREF="https://www.xenialab.com/english/">XeniaLAB</A></I><p><HR>';
 
@@ -244,7 +242,7 @@ select if(count(*)>1, '<td class="pass">Pass', '<td class="low">Fail<td>miXen da
 select '<tr><tr><td><a name="sc"><h4>Secure configuration</h4>' ;
 select '<tr><td><a name="sc1"><b>Version Check</b>' ;
 select '<tr><td><a name="sc1a"></a>MySQL version' ;
-select if(SUBSTRING_INDEX(version(),'.',2) in ('5.7'), '<td class="pass">Pass', '<td class="high">Fail') ;
+select if(SUBSTRING_INDEX(version(),'.',2) in ('8.0'), '<td class="pass">Pass', '<td class="high">Fail') ;
 select '<td>', SUBSTRING_INDEX(version(),'.',2);
 select '<tr><td><a name="sc2"><b>Database Hardening</b>' ;
 select '<tr><td><a name="sc2a"></a>Anonymous user' ; 
@@ -379,7 +377,6 @@ select '<tr><td><a name="sc2o"></a>Password lenght' ;
 select if(max(variable_value)>=8, '<td class="pass">Pass<td>', '<td class="med">Fail<td>Too short<td>'), variable_value
   from performance_schema.global_variables
  where variable_name='validate_password_length';
-
 select '<tr><td><a name="sc2p"></a>Password policy' ;
 select if(count(*)>=1, '<td class="pass">Pass', '<td class="med">Fail<td>Not secure')
   from performance_schema.global_variables
@@ -409,11 +406,11 @@ select if(max(variable_value)='ON', '<td class="high">Fail<td>', '<td class="ext
 
 select '<tr><td><a name="sc3"><b>Patching</b>' ;
 select '<tr><td><a name="sc3a"></a>MySQL update' ;
-select if(SUBSTRING_INDEX(version(),'-',1) in ('5.7.21','5.7.22','5.7.23'), '<td class="pass">Pass', '<td class="med">Fail') ;
+select if(SUBSTRING_INDEX(version(),'-',1) in ('8.0.11'), '<td class="pass">Pass', '<td class="med">Fail') ;
 select '<td>', version();
 
 select '<tr><td><a name="sc3c"></a>MySAT update' ;
-select if(now()<'2018-08-25', '<td class="pass">Pass', '<td class="med">Fail') ;
+select if(now()<'2018-05-25', '<td class="pass">Pass', '<td class="med">Fail') ;
 select '<td>1.0.1' ;
 select if(now() not like '20__-04-01%', '<!-- 1st April check -->', '<tr><td><td class="low">Fail<td>Never run it on April Fools\' Day') ;
 
@@ -919,7 +916,7 @@ select '<tr><td style="text-align: center;"><a href="http://eur-lex.europa.eu/le
 select '</table><p>' ;
 
 select '<P><A NAME="xcis"></A><h2>CIS Benchmarks Cross Reference</h2>';
-select '<P><table border="2"><tr><td style="text-align: center;"><b><a href="https://www.cisecurity.org/cis-benchmarks/">CIS Recommentations</a><br>for MySQL 5.7 CE</b>';
+select '<P><table border="2"><tr><td style="text-align: center;"><b><a href="https://www.cisecurity.org/cis-benchmarks/">CIS Recommentations</a><br>for MySQL (for 5.7 only)</b>';
 select '<td><b>Title</b>', '<td><b>Checks</b>';
 select '<tr><td style="text-align: center;">1.1<td>Place Databases on Non-System Partitions<td>';
  select '<a href="#sc2h">Dedicated datadir</a>' ;
