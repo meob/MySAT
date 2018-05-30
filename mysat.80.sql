@@ -9,7 +9,11 @@
 -- Note:
 -- 1.0.0:       1-MAY-2018 meo@bogliolo.name
 --                First version based on MySAT 1.0.1 for MySQL 5.7
--- 1.0.1          MySQL 8.0 compliance
+-- 1.0.1        25-MAY-2018
+--                MySQL 8.0 versions
+-- 1.0.2        15-AUG-2018
+--                Roles, password history, password plugin, redo/undo encryption
+
 
 use information_schema;
 select '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />';
@@ -65,7 +69,7 @@ select '</table><p><br><hr>' ;
 select '<P>Statistics generated on: ', now();
 select ' by: ', user(), 'as: ',current_user();
  
-select 'using: <I><b>mysat.80.sql</b> v.1.0.1 (2018-05-01)';
+select 'using: <I><b>mysat.80.sql</b> v.1.0.2 (2018-08-15)';
 select '<br>Software by ';
 select '<A HREF="https://www.xenialab.com/english/">XeniaLAB</A></I><p><HR>';
 
@@ -89,6 +93,20 @@ select distinct concat(user,'@',host)
 	  from mysql.db
 	 where create_priv='Y')
  order by 1;
+select '<tr><td><a name="ac1f"></a>Roles' ;
+select if(count(*)>=1, '<td class="pass">Pass<td><td>', '<td class="low">Fail<td>No Active roles<td>')
+  FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user
+ WHERE account_locked='Y'
+   AND password_expired='Y'
+   AND authentication_string=''
+   AND from_user is not null;
+select DISTINCT User
+  FROM mysql.user LEFT JOIN mysql.role_edges ON from_user=user
+ WHERE account_locked='Y'
+   AND password_expired='Y'
+   AND authentication_string=''
+   AND from_user is not null;
+
 select '<tr><td><a name="ac2"></a><b>Application user credential protection</b>' ;
 select '<tr><td><a name="ac2a"></a>Connection strings' ;
 select '<td class="ext">External<td>Check protection and obfuscation';
@@ -154,6 +172,11 @@ select '<tr><td><a name="lg3a"></a>Automatic log analyze<td class="ext">External
 select '<tr><td><a name="lg4"></a><b>Event management</b>' ;
 select '<tr><td><a name="lg4a"></a>Log Management<td class="ext">External<td>Log management is strongly suggested' ;
 select '<tr><td><a name="lg5"></a><b>Auditing</b>' ;
+select '<tr><td><a name="lg5a1"></a>Audit plugin' ;
+select if(count(*)>0, '<td class="pass">Pass', '<td class="high">Fail<td>Audit Plugin not found')
+  FROM INFORMATION_SCHEMA.PLUGINS
+ WHERE PLUGIN_NAME LIKE 'audit%'
+   AND PLUGIN_STATUS = 'ACTIVE';
 select '<tr><td><a name="lg5a"></a>Auditing active' ;
 select if(max(variable_value)>0, '<td class="pass">Pass', '<td class="high">Fail<td>Audit not enabled')
   from performance_schema.global_variables
@@ -180,7 +203,7 @@ select if(count(*)>0, '<td class="pass">Pass', '<td class="med">Fail<td>No at-re
   from INFORMATION_SCHEMA.TABLES
  where CREATE_OPTIONS LIKE '%ENCRYPTION="Y"%';
 select '<tr><td><a name="dp2c"></a>Suspect sensitive tables' ;
-select '<td class="eval">Evaluate<td>Suspect tables <td> ';
+select '<td class="eval">Evaluate<td>Check suspect tables.columns: <td> ';
 SELECT distinct concat(table_schema, '.', table_name, '.', column_name)
   from information_schema.columns c
  where c.table_schema not in('information_schema', 'mysql', 'performance_schema','sys')
@@ -209,6 +232,16 @@ SELECT distinct concat(table_schema, '.', table_name, '.', column_name)
  order by 1
  limit 100;
 select '...' ;
+select '<tr><td><a name="dp2d"></a>Redo encryption' ;
+select if(count(*)=1, '<td class="pass">Pass', '<td class="low">Fail<td>Not configured'), '<td>', variable_value
+  from performance_schema.global_variables
+ where variable_name='innodb_redo_log_encrypt'
+   and coalesce(variable_value, 'OFF') = 'ON';
+select '<tr><td><a name="dp2e"></a>Undo encryption' ;
+select if(count(*)=1, '<td class="pass">Pass', '<td class="low">Fail<td>Not configured'), '<td>', variable_value
+  from performance_schema.global_variables
+ where variable_name='innodb_undo_encrypt'
+   and coalesce(variable_value, 'OFF') = 'ON';
 select '<tr><td><a name="dp4"></a><b>Network encryption</b>' ;
 select '<tr><td><a name="dp4a"></a>SSL/TLS configured' ;
 select if(max(variable_value)='YES', '<td class="pass">Pass', '<td class="med">Fail<td>No SSL')
@@ -253,23 +286,22 @@ select if(count(*)=0, '<td class="pass">Pass', '<td class="high">Fail')
 select '<tr><td><a name="sc2b"></a>Any host access' ; 
 select if(count(*)=0, '<td class="pass">Pass', '<td class="med">Fail<td>Users can connect from everywhere<td> ')
   from mysql.user
- where host='%';
+ where account_locked='N' and host='%';
 select user
   from mysql.user
- where host='%';
-select '<tr><td><a name="sc2b2"></a>Many host access' ; 
+ where account_locked='N' and host='%';
+select '<tr><td><a name="sc2b2"></a>Many hosts access' ; 
 select if(count(*)=0, '<td class="pass">Pass', '<td class="low">Fail<td>Users can connect from a subnet<td> ')
   from mysql.user
- where host like'%\%' and host<>'%';
+ where account_locked='N' and host like'%\%' and host<>'%';
 select user
   from mysql.user
- where host like'%\%' and host<>'%';
-
+ where account_locked='N' and host like'%\%' and host<>'%';
 
 select '<tr><td><a name="sc2c"></a>DB Password check' ; 
 select if(count(*)=0, '<td class="pass">Pass', '<td class="high">Fail<td>Some users have easy passwords<td>')
   from mysql.user
- where authentication_string = ''
+ where account_locked='N' and (authentication_string = ''
     OR (authentication_string = UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1(user))) AS CHAR)))
         AND authentication_string <> '')
     OR authentication_string in ('*81F5E21E35407D884A6CD4A731AEBFB6AF209E1B', '*14E65567ABDB5135D0CFD9A70B3032C179A49EE7',
@@ -293,10 +325,10 @@ select if(count(*)=0, '<td class="pass">Pass', '<td class="high">Fail<td>Some us
       UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('joomla'))) AS CHAR))),
       UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('wp'))) AS CHAR))),
       UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('ilikerandompasswords'))) AS CHAR))),
-      UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('changeme'))) AS CHAR))) );
+      UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('changeme'))) AS CHAR))) )  );
 select concat(user, '@\'', host,'\'')
   from mysql.user
- where authentication_string = ''
+ where account_locked='N' and (authentication_string = ''
     OR authentication_string = UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1(user))) AS CHAR)))
     OR authentication_string in ('*81F5E21E35407D884A6CD4A731AEBFB6AF209E1B', '*14E65567ABDB5135D0CFD9A70B3032C179A49EE7',
       '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19', '*6C8989366EAF75BB670AD8EA7A7FC1176A95CEF4',
@@ -319,7 +351,7 @@ select concat(user, '@\'', host,'\'')
       UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('joomla'))) AS CHAR))),
       UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('wp'))) AS CHAR))),
       UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('ilikerandompasswords'))) AS CHAR))),
-      UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('changeme'))) AS CHAR))) );
+      UPPER(CONCAT('*', CAST(SHA1(UNHEX(SHA1('changeme'))) AS CHAR))) )   );
 select '<tr><td><a name="sc2d"></a>Backdoor users' ; 
 select if(count(*)=0, '<td class="pass">Pass', '<td class="high">Fail<td>Found suspected users')
   from mysql.user
@@ -328,16 +360,55 @@ select '<tr><td><a name="sc2d2"></a>Test schema' ;
 select if(count(*)=0, '<td class="pass">Pass', '<td class="med">Fail<td>Test schema found')
   from INFORMATION_SCHEMA.TABLES
  where table_schema='test';
-select '<tr><td><a name="sc2e"></a>Admin or Oper users <>root' ; 
+select '<tr><td><a name="sc2e"></a>Admin users <>root' ; 
 select if(count(*)=0, '<td class="pass">Pass', '<td class="eval">Evaluate<td><td> ')
   from mysql.user
  where user<>'root' and user<>'mysql.session'
-   and (select_priv='Y' or update_priv='Y' or file_priv='Y' or super_priv='Y' );
+   and super_priv='Y';
 select concat(user,'@',host)
   from mysql.user
  where user<>'root' and user<>'mysql.session'
-   and (select_priv='Y' or update_priv='Y' or file_priv='Y' or super_priv='Y' )
+   and super_priv='Y'
  order by 1;
+select '<tr><td><a name="sc2e2"></a>Oper users <>root' ; 
+select if(count(*)=0, '<td class="pass">Pass', '<td class="eval">Evaluate<td><td> ')
+  from mysql.user
+ where user not in('root', 'mysql.session', 'mysql.infoschema') and super_priv='N'
+   and (select_priv='Y' or update_priv='Y' or file_priv='Y' or grant_priv='Y' or alter_priv='Y' or process_priv='Y');
+select concat(user,'@',host)
+  from mysql.user
+ where user not in('root', 'mysql.session', 'mysql.infoschema') and super_priv='N'
+   and (select_priv='Y' or update_priv='Y' or file_priv='Y' or grant_priv='Y' or alter_priv='Y' or process_priv='Y')
+ order by 1;
+
+select '<tr><td><a name="sc2e3"></a>Authentication Plugin' ;
+select if(count(*)=0, '<td class="pass">Pass', '<td class="eval">Evaluate<td><td> ')
+  from mysql.user
+ where plugin<>'caching_sha2_password'
+   and account_locked='N';
+select user
+  from mysql.user
+ where plugin<>'caching_sha2_password'
+   and account_locked='N';
+select '<tr><td><a name="sc2e4"></a>Password reuse history' ;
+select if(count(*)=0, '<td class="pass">Pass', '<td class="eval">Evaluate<td><td> ')
+  from mysql.user
+ where coalesce(password_reuse_history,0)<4
+   and account_locked='N';
+select user
+  from mysql.user
+ where coalesce(password_reuse_history,0)<4
+   and account_locked='N';
+select '<tr><td><a name="sc2e4"></a>Password reuse time' ;
+select if(count(*)=0, '<td class="pass">Pass', '<td class="eval">Evaluate<td><td> ')
+  from mysql.user
+ where coalesce(password_reuse_time,0)<270
+   and account_locked='N';
+select user
+  from mysql.user
+ where coalesce(password_reuse_time,0)<270
+   and account_locked='N';
+
 select '<tr><td><a name="sc2f"></a>IDS<td class="ext">External<td>Configure IDS to monitor honeypot';
 select '<tr><td><a name="sc2g"></a>Spammable tables' ;
 select if(count(*)=0, '<td class="pass">Pass', '<td class="eval">Evaluate<td>Suspected tables found<td>')
@@ -372,16 +443,22 @@ select if(count(*)=1, '<td class="pass">Pass', '<td class="low">Fail<td>On file'
  where variable_name='master_info_repository'
    and variable_value = 'TABLE';
 select '<tr><td><a name="sc2n"></a>Automatic User Creation' ;
-select if(locate('NO_AUTO_CREATE_USER',@@global.sql_mode)>0, '<td class="pass">Pass', '<td class="med">Fail<td>Not disabled');
+select '<td class="pass">Pass<td>Always disabled in 8.0';
 select '<tr><td><a name="sc2o"></a>Password lenght' ;
-select if(max(variable_value)>=8, '<td class="pass">Pass<td>', '<td class="med">Fail<td>Too short<td>'), variable_value
+select if(max(variable_value)>=8, '<td class="pass">Pass<td>', '<td class="med">Fail<td>Too short<td>'), 
+       max(variable_value)
   from performance_schema.global_variables
- where variable_name='validate_password_length';
+ where variable_name='validate_password.length';
 select '<tr><td><a name="sc2p"></a>Password policy' ;
-select if(count(*)>=1, '<td class="pass">Pass', '<td class="med">Fail<td>Not secure')
+select if(count(*)>=1, '<td class="pass">Pass<td>', '<td class="med">Fail<td>Not secure<td>'),
+       max(variable_value)
   from performance_schema.global_variables
- where variable_name='validate_password_policy'
+ where variable_name='validate_password.policy'
    and variable_value in ('MEDIUM','STRONG');
+select '<tr><td><a name="sc2p2"></a>Password validate component' ;
+select if(count(*)>=1, '<td class="pass">Pass<td>', '<td class="med">Fail<td>Component not installed<td>')
+  from mysql.component
+ where component_urn = 'file://component_validate_password';
 select '<tr><td><a name="sc2q"></a>Performance statistics' ;
 select if(count(*)>=1, '<td class="pass">Pass', '<td class="low">Fail<td>my2 collector not found')
   from INFORMATION_SCHEMA.TABLES
@@ -403,15 +480,14 @@ select if(max(variable_value)='ON', '<td class="high">Fail<td>', '<td class="ext
   from performance_schema.global_variables
  where variable_name='skip_grant_tables';
 
-
 select '<tr><td><a name="sc3"><b>Patching</b>' ;
 select '<tr><td><a name="sc3a"></a>MySQL update' ;
-select if(SUBSTRING_INDEX(version(),'-',1) in ('8.0.11'), '<td class="pass">Pass', '<td class="med">Fail') ;
+select if(SUBSTRING_INDEX(version(),'-',1) in ('8.0.11','8.0.12'), '<td class="pass">Pass', '<td class="med">Fail') ;
 select '<td>', version();
 
 select '<tr><td><a name="sc3c"></a>MySAT update' ;
-select if(now()<'2018-05-25', '<td class="pass">Pass', '<td class="med">Fail') ;
-select '<td>1.0.1' ;
+select if(now()<'2018-08-25', '<td class="pass">Pass', '<td class="med">Fail') ;
+select '<td>1.0.2' ;
 select if(now() not like '20__-04-01%', '<!-- 1st April check -->', '<tr><td><td class="low">Fail<td>Never run it on April Fools\' Day') ;
 
 select '<tr><td>&nbsp;<tr><td><a name="gdpr1"><b>GDPR Countdown</b>' ;
@@ -509,8 +585,10 @@ select '<tr><td><b>User</b>',
  '<td><b>Execute</b>',
  '<td><b>Grant</b>',
  '<td><b>Expired</b>',
+ '<td><b>Locked</b>',
  '<td><b>Password lifetime</b>',
- '<td><b>Locked</b>';
+ '<td><b>Password history</b>',
+ '<td><b>Plugin</b>';
 SELECT '<tr><td>',user, 
 	'<td>', host,
 	'<td><code>', CONCAT(Select_priv, Lock_tables_priv,' ',
@@ -524,8 +602,10 @@ SELECT '<tr><td>',user,
 	'<td>', execute_priv, 
 	'<td>', grant_priv,
 	'<td>', password_expired,
+	'<td>', account_locked,
 	'<td>', password_lifetime,
-	'<td>', account_locked
+	'<td>', password_reuse_history, ' over ', password_reuse_time,'gg',
+	'<td>', plugin
 from mysql.user d
 order by user,host;
 select '</table><p>' ;
