@@ -1,9 +1,9 @@
 -- Program:	MySAT.80.sql
 -- 		MySQL 8.0 Security Assessement Tool
 --
--- Version:     1.0.1
+-- Version:     1.0.3
 -- Author:      XeniaLAB srl
--- Date:        25-MAY-2018
+-- Date:        01-OCT-2018
 -- Usage:	mysql --user=root -pXXX --skip-column-names -f < mysat.80.sql > MySAT.htm
 --
 -- Note:
@@ -11,8 +11,10 @@
 --                First version based on MySAT 1.0.1 for MySQL 5.7
 -- 1.0.1        25-MAY-2018
 --                MySQL 8.0 versions
--- 1.0.2        15-AUG-2018
+-- 1.0.2:       01-OCT-2018 meo@bogliolo.name
 --                Roles, password history, password plugin, redo/undo encryption
+-- 1.0.3:       01-OCT-2018 meo@bogliolo.name
+--                CVE list, Last MySQL version update
 
 
 use information_schema;
@@ -64,12 +66,13 @@ select '<li><A HREF="#hostc">Connections</A></li>' ;
 select '</ul>' ;
 
 select '<tr><td><A HREF="#xgdpr"><b>GDPR Cross Reference</b><td><A HREF="#xcis"><b>CIS Benchmarks Cross Reference</b></A>' ;
+select '<td> <A HREF="#xcve"><b>CVE Details</b></A>' ;
 select '</table><p><br><hr>' ;
  
 select '<P>Statistics generated on: ', now();
 select ' by: ', user(), 'as: ',current_user();
  
-select 'using: <I><b>mysat.80.sql</b> v.1.0.2 (2018-08-15)';
+select 'using: <I><b>mysat.80.sql</b> v.1.0.3 (2018-10-01)';
 select '<br>Software by ';
 select '<A HREF="https://www.xenialab.com/english/">XeniaLAB</A></I><p><HR>';
 
@@ -172,21 +175,18 @@ select '<tr><td><a name="lg3a"></a>Automatic log analyze<td class="ext">External
 select '<tr><td><a name="lg4"></a><b>Event management</b>' ;
 select '<tr><td><a name="lg4a"></a>Log Management<td class="ext">External<td>Log management is strongly suggested' ;
 select '<tr><td><a name="lg5"></a><b>Auditing</b>' ;
-select '<tr><td><a name="lg5a1"></a>Audit plugin' ;
-select if(count(*)>0, '<td class="pass">Pass', '<td class="high">Fail<td>Audit Plugin not found')
-  FROM INFORMATION_SCHEMA.PLUGINS
- WHERE PLUGIN_NAME LIKE 'audit%'
-   AND PLUGIN_STATUS = 'ACTIVE';
 select '<tr><td><a name="lg5a"></a>Auditing active' ;
-select if(max(variable_value)>0, '<td class="pass">Pass', '<td class="high">Fail<td>Audit not enabled')
+select if(count(*)>0, '<td class="pass">Pass', '<td class="high">Fail<td>Audit not enabled')
   from performance_schema.global_variables
- where variable_name='server_audit_logging';
+ where variable_name='server_audit_logging'
+   and variable_value='ON';
 select '<tr><td><a name="lg5b"></a>Auditing event configuration' ;
 select if(variable_value like '%CONNECT%', '<td class="pass">Pass', '<td class="med">Fail<td>Connections not audited')
   from performance_schema.global_variables
- where variable_name='server_audit_logging';
+ where variable_name='server_audit_events';
 select '<tr><td><a name="lg5c"></a>Auditing users whitelist' ;
-select if(variable_value is null, '<td class="pass">Pass', '<td class="eval">Evaluate<td>Excluded users<td>')
+select if(variable_value is null or variable_value='', '<td class="pass">Pass',
+                              '<td class="eval">Evaluate<td>Excluded users<td>')
   from performance_schema.global_variables
  where variable_name='server_audit_excl_users';
 select variable_value
@@ -194,6 +194,7 @@ select variable_value
  where variable_name='server_audit_excl_users'
    and variable_value is not null;
 -- LG6	End user accountability 
+
 
 select '<tr><tr><td><a name="dp"></a><h4>Data Protection</h4>' ;
 select '<tr><td><a name="dp1"></a><b>Application encryption</b>' ;
@@ -297,6 +298,27 @@ select if(count(*)=0, '<td class="pass">Pass', '<td class="low">Fail<td>Users ca
 select user
   from mysql.user
  where account_locked='N' and host like'%\%' and host<>'%';
+
+select '<tr><td><a name="sc2b"></a>Any host access' ; 
+select if(count(*)=0, '<td class="pass">Pass', '<td class="med">Fail<td>Users can connect from everywhere<td> ')
+  from mysql.user
+ where host='%'
+   and account_locked='N';
+select user
+  from mysql.user
+ where host='%'
+   and account_locked='N';
+select '<tr><td><a name="sc2b2"></a>Many host access' ; 
+select if(count(*)=0, '<td class="pass">Pass', '<td class="low">Fail<td>Users can connect from a subnet<td> ')
+  from mysql.user
+ where host like'%\%' and host<>'%' and account_locked='N';
+select user
+  from mysql.user
+ where host like'%\%' and host<>'%' and account_locked='N';
+
+
+
+
 
 select '<tr><td><a name="sc2c"></a>DB Password check' ; 
 select if(count(*)=0, '<td class="pass">Pass', '<td class="high">Fail<td>Some users have easy passwords<td>')
@@ -482,12 +504,12 @@ select if(max(variable_value)='ON', '<td class="high">Fail<td>', '<td class="ext
 
 select '<tr><td><a name="sc3"><b>Patching</b>' ;
 select '<tr><td><a name="sc3a"></a>MySQL update' ;
-select if(SUBSTRING_INDEX(version(),'-',1) in ('8.0.11','8.0.12'), '<td class="pass">Pass', '<td class="med">Fail') ;
+select if(SUBSTRING_INDEX(version(),'-',1) in ('8.0.11','8.0.12','8.0.13'), '<td class="pass">Pass', '<td class="med">Fail') ;
 select '<td>', version();
 
 select '<tr><td><a name="sc3c"></a>MySAT update' ;
-select if(now()<'2018-08-25', '<td class="pass">Pass', '<td class="med">Fail') ;
-select '<td>1.0.2' ;
+select if(now()<'2018-11-25', '<td class="pass">Pass', '<td class="med">Fail') ;
+select '<td>1.0.3' ;
 select if(now() not like '20__-04-01%', '<!-- 1st April check -->', '<tr><td><td class="low">Fail<td>Never run it on April Fools\' Day') ;
 
 select '<tr><td>&nbsp;<tr><td><a name="gdpr1"><b>GDPR Countdown</b>' ;
@@ -1036,8 +1058,10 @@ select '<tr><td style="text-align: center;">5.5 <td>Ensure shutdown_priv Is Not 
 select '<tr><td style="text-align: center;">5.6 <td>Ensure create_user_priv Is Not Set to Y for Non-Administrative Users<td>';
  select '<a href="#usr">Users</a>' ;
 select '<tr><td style="text-align: center;">5.7 <td>Ensure grant_priv Is Not Set to Y for Non-Administrative Users<td>';
- select '<a href="#usr">Users</a>' ;select '<tr><td style="text-align: center;">5.8 <td>Ensure repl_slave_priv Is Not Set to Y for Non-Administrative Users<td>';
- select '<a href="#usr">Users</a>' ;select '<tr><td style="text-align: center;">5.9 <td>Ensure DML/DDL Grants Are Limited to Specific Databases and Users<td>';
+ select '<a href="#usr">Users</a>' ;
+select '<tr><td style="text-align: center;">5.8 <td>Ensure repl_slave_priv Is Not Set to Y for Non-Administrative Users<td>';
+ select '<a href="#usr">Users</a>' ;
+select '<tr><td style="text-align: center;">5.9 <td>Ensure DML/DDL Grants Are Limited to Specific Databases and Users<td>';
  select '<a href="#ac1e">CRUD users</a>,' ;
  select '<a href="#sc2e">Admin or Oper users &lt;&gt;root</a>,' ;
  select '<a href="#usr">Users</a>' ;
@@ -1079,11 +1103,26 @@ select '<tr><td style="text-align: center;">9.5 <td>Ensure No Replication Users 
  select '<a href="#usr">Users</a>' ;
 select '</table><p>' ;
 
+select '<P><A NAME="xcve"></A><h2>CVE</h2>';
+select '<P><table border="2"><tr><td style="text-align: center;"><b><a href="https://www.cvedetails.com/vulnerability-list.php?vendor_id=93&product_id=21801&order=3">CVE Details</a><td>for MySQL 8.0</b>';
+select '<tr><td><b>Version</b>', '<td><b>CVE</b>', '<td><b>Score</b>';
+
+select concat('<tr><td>',version()), '<td><b><a href="#sc3">Detected version</a></b>', '<td>'
+union select '<tr><td>8.0.11<!---->', '<td>CVE-2018-3064', '<td style="text-align: right;"> 5.5'	
+union select '<tr><td>8.0.11<!---->', '<td>CVE-2018-3060', '<td style="text-align: right;"> 5.5'
+union select '<tr><td>8.0.01<!---->', '<td>CVE-2016-6663', '<td style="text-align: right;"> 4.4'	
+order by 1 desc, 3 desc;
+select '</table><p>' ;
+
 select '<hr><p>' ;
-select '<br>The MIT License';select '<br>Copyright &copy; 2017-2018 XeniaLAB srl http://www.xenialab.it';select '<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),';
+select '<br>The MIT License';
+select '<br>Copyright &copy; 2017-2018 XeniaLAB srl http://www.xenialab.it';
+select '<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),';
 select ' to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,';
-select ' and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:';select '<br>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.';
-select '<p><b>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,';
+select ' and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:';
+select '<br>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.';
+
+select '<p><b>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,';
 select ' FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,';
 select ' WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</b><p><br>';
 
