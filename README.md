@@ -19,14 +19,14 @@ MySAT generates a straightforward report in HTML.
 MySAT report contains 3 parts:
 * security check results
 * configuration summary and details
-* check cross references with GDPR Articles and CIS Benchmarks; and CVE short list
+* cross references with GDPR Articles and CIS Benchmarks and CVE short list
 
 ## Version support
 
 MySAT can be used with all MySQL and MySQL forks version but
 for security reasons we strongly suggest to use MySQL 5.7 or newer.
 Always update to the last minor update available.
-For MySQL 8.0 there are small differences and we created a specific script **mysat.80.sql**
+For MySQL 8.0 there are many differences and a specific script **mysat.80.sql** is available.
 
 
 #### References
@@ -38,3 +38,5 @@ GDPR Cross Reference contains links to GDPR articles (http://eur-lex.europa.eu/l
 CIS Benckmars Cross Reference is based on *CIS Oracle MySQL Community Server 5.7 Benchmark* v.1.0.0 (http://benchmarks.cisecurity.org).
 
 CVE short list and scores are based on *CVE Details* (https://www.cvedetails.com).
+
+A simple description of MySAT is available in Italian (https://www.xenialab.it/meo/web/white/oracle/mysat.htm).
