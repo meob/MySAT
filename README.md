@@ -39,4 +39,4 @@ CIS Benckmars Cross Reference is based on *CIS Oracle MySQL Community Server 5.7
 
 CVE short list and scores are based on *CVE Details* (https://www.cvedetails.com).
 
-A simple description of MySAT is available in Italian (https://www.xenialab.it/meo/web/white/oracle/mysat.htm).
+A simple description of MySAT is available in Italian (https://www.meo.bogliolo.name/white/oracle/mysat.htm).
